@@ -3,6 +3,8 @@ Quick Start
 
 You have `curl`, right? Okay. 
 
+      curl http://github.com/micha/resty/raw/master/resty > resty
+
 Source the script before using it. (You can put this line in your `~/.bashrc`
 file if you want, or just paste the contents of the `resty` script right in
 there. Either way works.)
@@ -70,9 +72,22 @@ filename with `-`, like this:
 
       PUT /blogs/5.json @- < /tmp/t
 
-Or, interestingly, as a filter pipeline:
+Or, interestingly, as a filter pipeline with 
+[jsawk](http://github.com/micha/jsawk):
 
-      GET /blogs/5.json | sed 's/joe/bob/g' | PUT /blogs/5.json @-
+      GET /blogs/5.json | jsawk 'this.author="Bob Smith";this.tags.push("news")' | PUT /blogs/5.json @-
+
+Errors and Output
+=================
+
+For successful 2xx responses, the response body is printed on stdout. You
+can pipe the output to stuff, process it, and then pipe it back to resty,
+if you want.
+
+For responses other than 2xx most HTTP servers will include HTML in the
+response body describing what went wrong.  Resty will process the HTML with
+`html2text` (if available), and dump it to stderr. If the response was not
+HTML it should pass right through `html2text`, hopefully unmolested.
 
 Options
 =======
@@ -93,10 +108,31 @@ Here are some useful options to try:
   * **-H \<header\>** add request header (this option can be added more than 
     once)
 
-JSON Pretty-Printing
-====================
+Exit Status
+===========
 
-The included `pp` script will pretty-print JSON for you. You just need to
-install the JSON perl module from CPAN.
+Successful requests (HTTP respose with 2xx status) return zero.
+Otherwise, the first digit of the response status is returned (i.e., 1 for
+1xx, 3 for 3xx, 4 for 4xx, etc.) This is because the exit status is an 8 bit
+integer---it can't be greater than 254. If you want the exact status code
+you can always just pass the `-v` option to curl.
 
-      GET /blogs.json |pp
+Working With JSON
+=================
+
+JSON REST web services require some special tools to make them accessible
+and easily manipulated in the shell environment. The following are a few
+scripts that make dealing with JSON data easier.
+
+  * [Jsawk](http://github.com/micha/jsawk) can be used to process and filter
+    JSON data from and to resty, in a shell pipeline. This takes care of
+    parsing the input JSON correctly, rather than using regexes and sed,
+    awk, perl or the like, and prints the resulting output in correct JSON
+    format, as well.
+
+    `GET /blogs.json |jsawk -n 'out(this.title)' # prints all the blog titles`
+
+  * The included `pp` script will pretty-print JSON for you. You just need to
+    install the JSON perl module from CPAN.
+
+    `GET /blogs.json |pp # pretty-prints the JSON output from resty`
